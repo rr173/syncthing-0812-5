@@ -187,8 +187,9 @@ func (c *globalClient) Lookup(ctx context.Context, device protocol.DeviceID) (ad
 		slog.DebugContext(ctx, "globalClient.Lookup", "url", qURL, slogutil.Error(err))
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
 		slog.DebugContext(ctx, "globalClient.Lookup", "url", qURL, "status", resp.Status)
 		err := errors.New(resp.Status)
 		if secs, atoiErr := strconv.Atoi(resp.Header.Get("Retry-After")); atoiErr == nil && secs > 0 {
@@ -204,7 +205,6 @@ func (c *globalClient) Lookup(ctx context.Context, device protocol.DeviceID) (ad
 	if err != nil {
 		return nil, err
 	}
-	resp.Body.Close()
 
 	var ann announcement
 	err = json.Unmarshal(bs, &ann)
@@ -407,6 +407,7 @@ func (c *idCheckingHTTPClient) Get(ctx context.Context, url string) (*http.Respo
 		return nil, err
 	}
 	if err := c.check(resp); err != nil {
+		resp.Body.Close()
 		return nil, err
 	}
 
@@ -419,6 +420,7 @@ func (c *idCheckingHTTPClient) Post(ctx context.Context, url, ctype string, data
 		return nil, err
 	}
 	if err := c.check(resp); err != nil {
+		resp.Body.Close()
 		return nil, err
 	}
 

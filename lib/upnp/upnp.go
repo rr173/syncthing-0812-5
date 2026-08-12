@@ -295,6 +295,7 @@ func parseResponse(ctx context.Context, deviceType string, addr *net.UDPAddr, re
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 
 	respondingDeviceType := response.Header.Get("St")
 	if respondingDeviceType != deviceType {
@@ -338,18 +339,18 @@ func parseResponse(ctx context.Context, deviceType string, addr *net.UDPAddr, re
 	}
 
 	deviceUUID := strings.TrimPrefix(strings.Split(deviceUSN, "::")[0], "uuid:")
-	response, err = http.Get(deviceDescriptionLocation)
+	descriptionResponse, err := http.Get(deviceDescriptionLocation)
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer descriptionResponse.Body.Close()
 
-	if response.StatusCode >= 400 {
-		return nil, errors.New("bad status code:" + response.Status)
+	if descriptionResponse.StatusCode >= 400 {
+		return nil, errors.New("bad status code:" + descriptionResponse.Status)
 	}
 
 	var upnpRoot upnpRoot
-	err = xml.NewDecoder(response.Body).Decode(&upnpRoot)
+	err = xml.NewDecoder(descriptionResponse.Body).Decode(&upnpRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -607,6 +608,7 @@ func soapRequestWithIP(ctx context.Context, url, service, function, message stri
 		l.Debugln("SOAP do:", err)
 		return resp, err
 	}
+	defer r.Body.Close()
 
 	resp, err = io.ReadAll(r.Body)
 	if err != nil {
@@ -615,8 +617,6 @@ func soapRequestWithIP(ctx context.Context, url, service, function, message stri
 	}
 
 	l.Debugf("SOAP Response: %s\n\n%s\n\n", r.Status, resp)
-
-	r.Body.Close()
 
 	if r.StatusCode >= 400 {
 		return resp, errors.New(function + ": " + r.Status)
